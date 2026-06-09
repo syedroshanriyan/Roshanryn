@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Reminders — Smart To‑Do List</title>
+  <style>
+    /* ---------- CSS Variables: Light + Dark (Apple Style) ---------- */
+    :root {
+      --bg: #f2f2f6;
+      --surface: #ffffff;
+      --surface-secondary: #f9f9fb;
+      --text: #1c1c1e;
+      --text-secondary: #6c6c70;
+      --border: #e9e9ef;
+      --accent: #007aff;
+      --accent-hover: #005fc1;
+      --danger: #ff3b30;
+      --warning: #ff9500;
+      --success: #34c759;
+      --card-shadow: 0 8px 24px rgba(0,0,0,0.04), 0 2px 4px rgba(0,0,0,0.02);
+    }
+    body.dark {
+      --bg: #000000;
+      --surface: #1c1c1e;
+      --surface-secondary: #2c2c2e;
+      --text: #ffffff;
+      --text-secondary: #8e8e93;
+      --border: #38383a;
+      --card-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      font-family: -apple-system, 'SF Pro Text', 'Helvetica Neue', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 24px 18px 80px;
+      transition: background 0.3s ease, color 0.2s ease;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 10px;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    /* Header with elegant theme toggle */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 28px;
+    }
+    h1 {
+      font-size: 34px;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), #5856d6);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      letter-spacing: -0.5px;
+    }
+    /* iOS-style toggle switch */
+    .theme-switch {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .switch-label {
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 52px;
+      height: 28px;
+    }
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #e5e5ea;
+      transition: 0.3s;
+      border-radius: 28px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 24px;
+      width: 24px;
+      left: 2px;
+      bottom: 2px;
+      background-color: white;
+      transition: 0.3s;
+      border-radius: 50%;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    input:checked + .slider {
+      background-color: var(--accent);
+    }
+    input:checked + .slider:before {
+      transform: translateX(24px);
+    }
+    /* Cards & UI */
+    .card {
+      background: var(--surface);
+      border-radius: 24px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: var(--card-shadow);
+      transition: background 0.2s, box-shadow 0.2s;
+    }
+    .form-group {
+      margin-bottom: 18px;
+    }
+    label {
+      font-weight: 500;
+      font-size: 14px;
+      color: var(--text-secondary);
+      display: block;
+      margin-bottom: 8px;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 14px 16px;
+      font-size: 16px;
+      font-family: inherit;
+      background: var(--surface-secondary);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      color: var(--text);
+      transition: all 0.2s;
+    }
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(0,122,255,0.2);
+    }
+    button {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 14px 20px;
+      border-radius: 14px;
+      font-weight: 600;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.2s;
+      width: 100%;
+    }
+    button:active {
+      transform: scale(0.97);
+    }
+    .btn-secondary {
+      background: var(--surface-secondary);
+      color: var(--accent);
+      border: 1px solid var(--border);
+      margin-top: 8px;
+    }
+    /* Segmented control (reimagined: All, Today, Schedule, Completed) */
+    .segmented {
+      display: flex;
+      background: var(--surface);
+      border-radius: 100px;
+      padding: 4px;
+      margin-bottom: 24px;
+      box-shadow: var(--card-shadow);
+      gap: 4px;
+    }
+    .segment {
+      flex: 1;
+      text-align: center;
+      padding: 10px 0;
+      font-size: 15px;
+      font-weight: 500;
+      border-radius: 40px;
+      background: transparent;
+      color: var(--text-secondary);
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+    .segment.active {
+      background: var(--accent);
+      color: white;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    /* Task Cards */
+    .task {
+      background: var(--surface);
+      border-radius: 20px;
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: var(--card-shadow);
+      transition: transform 0.1s, background 0.2s;
+      border-left: 4px solid var(--accent);
+    }
+    .task.overdue {
+      border-left-color: var(--danger);
+    }
+    .task.today {
+      border-left-color: var(--warning);
+    }
+    .task-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .task-title {
+      font-weight: 600;
+      font-size: 17px;
+      word-break: break-word;
+      flex: 1;
+    }
+    .task-date {
+      font-size: 13px;
+      background: var(--surface-secondary);
+      padding: 4px 12px;
+      border-radius: 30px;
+      color: var(--text-secondary);
+    }
+    .task-desc {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin: 8px 0;
+      line-height: 1.4;
+    }
+    .task-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .task-actions button {
+      width: auto;
+      padding: 8px 16px;
+      font-size: 14px;
+      border-radius: 30px;
+    }
+    .complete-btn {
+      background: var(--success);
+    }
+    .delete-btn {
+      background: var(--danger);
+    }
+    .info-text {
+      font-size: 13px;
+      text-align: center;
+      margin-top: 20px;
+      color: var(--text-secondary);
+    }
+    .notification-status {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    #requestPermBtn {
+      width: auto;
+      padding: 8px 16px;
+      background: var(--surface-secondary);
+      color: var(--accent);
+    }
+    .empty-state {
+      text-align: center;
+      padding: 48px 20px;
+      background: var(--surface);
+      border-radius: 28px;
+      color: var(--text-secondary);
+    }
+    button:disabled {
+      opacity: 0.6;
+      transform: none;
+    }
+    /* Haptic simulation */
+    button:active, .segment:active, .task-actions button:active {
+      transform: scale(0.97);
+      transition: transform 0.05s;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>Reminders</h1>
+    <div class="theme-switch">
+      <span class="switch-label">🌙</span>
+      <label class="switch">
+        <input type="checkbox" id="themeToggleCheckbox">
+        <span class="slider"></span>
+      </label>
+      <span class="switch-label">☀️</span>
+    </div>
+  </div>
+
+  <!-- Add new task card -->
+  <div class="card">
+    <div class="form-group">
+      <label>Task name</label>
+      <input type="text" id="taskTitle" placeholder="Enter task name" autocomplete="off">
+    </div>
+    <div class="form-group">
+      <label>Description (optional)</label>
+      <textarea id="taskDesc" rows="2"></textarea>
+    </div>
+    <div class="form-group">
+      <label>Due date & time</label>
+      <input type="datetime-local" id="taskDatetime">
+    </div>
+    <button id="addBtn">➕ Add Reminder</button>
+  </div>
+
+  <!-- Notifications card -->
+  <div class="card">
+    <div class="notification-status">
+      <span>🔔 Notifications</span>
+      <button id="requestPermBtn" class="btn-secondary">Allow</button>
+    </div>
+    <div id="notificationStatus" style="font-size:12px; margin-top:8px;"></div>
+  </div>
+
+  <!-- Segmented Control: All · Today · Schedule · Completed (fully functional) -->
+  <div class="segmented">
+    <div class="segment active" data-filter="all">All</div>
+    <div class="segment" data-filter="today">Today</div>
+    <div class="segment" data-filter="schedule">Schedule</div>
+    <div class="segment" data-filter="completed">Completed</div>
+  </div>
+
+  <!-- Tasks dynamic container -->
+  <div id="tasksContainer"></div>
+  <div class="info-text">
+    ⏰ Smart reminders: 1 day before & on due date (hourly check)<br>
+    📲 Works offline, browser notifications even when closed
+  </div>
+</div>
+
+<script>
+  // ---------- DATA ----------
+  let tasks = [];
+  let notificationEnabled = false;
+  let reminderInterval = null;
+
+  // DOM elements
+  const tasksContainer = document.getElementById('tasksContainer');
+  const themeToggleCheckbox = document.getElementById('themeToggleCheckbox');
+  const addBtn = document.getElementById('addBtn');
+  const requestPermBtn = document.getElementById('requestPermBtn');
+  const notificationStatusDiv = document.getElementById('notificationStatus');
+  const taskTitle = document.getElementById('taskTitle');
+  const taskDesc = document.getElementById('taskDesc');
+  const taskDatetime = document.getElementById('taskDatetime');
+
+  let currentFilter = 'all';   // 'all', 'today', 'schedule', 'completed'
+
+  // ---------- HELPER: get local date YYYY-MM-DD (timezone-safe) ----------
+  function getLocalDateStr(dateObj) {
+    const year = dateObj.getFullYear();
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  // Get local date from stored ISO string (due_datetime)
+  function getLocalDueDate(taskDueISO) {
+    const due = new Date(taskDueISO);
+    return getLocalDateStr(due);
+  }
+
+  // ---------- THEME HANDLER (Dark/Light Toggle) ----------
+  function initTheme() {
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark') {
+      document.body.classList.add('dark');
+      themeToggleCheckbox.checked = true;
+    } else {
+      document.body.classList.remove('dark');
+      themeToggleCheckbox.checked = false;
+    }
+  }
+  function toggleThemeFromSwitch(e) {
+    if (themeToggleCheckbox.checked) {
+      document.body.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.body.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }
+  themeToggleCheckbox.addEventListener('change', toggleThemeFromSwitch);
+  initTheme();
+
+  // ---------- STORAGE ----------
+  function loadTasksFromStorage() {
+    const stored = localStorage.getItem('todo_reminder_tasks');
+    if (stored) {
+      tasks = JSON.parse(stored);
+    } else {
+      // Demo: N8N webinar tomorrow at 18:00 (ensures it appears in "Schedule" or "Today" depending on day)
+      const demoDate = new Date();
+      demoDate.setDate(demoDate.getDate() + 1);
+      demoDate.setHours(18, 0, 0, 0);
+      // Another sample: A task due today to showcase "Today" filter
+      const todayDemo = new Date();
+      todayDemo.setHours(19, 30, 0, 0);
+      tasks = [
+        {
+          id: Date.now(),
+          title: "N8N webinar",
+          description: "Join the automation workflow session",
+          due_datetime: demoDate.toISOString(),
+          status: "pending",
+          reminder_before_sent: false,
+          reminder_day_sent: false
+        },
+        {
+          id: Date.now() + 1,
+          title: "Review project proposal",
+          description: "Share feedback with team",
+          due_datetime: todayDemo.toISOString(),
+          status: "pending",
+          reminder_before_sent: false,
+          reminder_day_sent: false
+        }
+      ];
+      saveTasks();
+    }
+    renderTasks();
+  }
+  function saveTasks() {
+    localStorage.setItem('todo_reminder_tasks', JSON.stringify(tasks));
+  }
+
+  // ---------- NOTIFICATIONS ----------
+  async function requestNotification() {
+    if (!('Notification' in window)) {
+      notificationStatusDiv.innerText = '⚠️ Not supported on this browser';
+      return;
+    }
+    const permission = await Notification.requestPermission();
+    notificationEnabled = (permission === 'granted');
+    notificationStatusDiv.innerText = notificationEnabled ? '✅ Notifications enabled' : '❌ Notifications blocked';
+  }
+  function sendNotification(title, body) {
+    if (!notificationEnabled) return;
+    new Notification(title, { body, icon: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23007aff"%3E%3Cpath d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/%3E%3C/svg%3E' });
+  }
+
+  // ---------- REMINDER ENGINE (hourly checks) ----------
+  function checkReminders() {
+    const now = new Date();
+    const todayLocal = getLocalDateStr(now);
+    const tomorrowDate = new Date(now);
+    tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+    const tomorrowLocal = getLocalDateStr(tomorrowDate);
+    let updated = false;
+    tasks.forEach(task => {
+      if (task.status !== 'pending') return;
+      const dueDateObj = new Date(task.due_datetime);
+      const dueLocal = getLocalDateStr(dueDateObj);
+      // One day before reminder
+      if (dueLocal === tomorrowLocal && !task.reminder_before_sent) {
+        sendNotification(`⏰ Reminder: tomorrow`, `${task.title} is due tomorrow`);
+        task.reminder_before_sent = true;
+        updated = true;
+      }
+      // Day of reminder
+      else if (dueLocal === todayLocal && !task.reminder_day_sent) {
+        sendNotification(`🔔 Due today`, `${task.title} is due today`);
+        task.reminder_day_sent = true;
+        updated = true;
+      }
+    });
+    if (updated) {
+      saveTasks();
+      renderTasks(); // refresh UI highlights
+    }
+  }
+
+  function scheduleReminders() {
+    if (reminderInterval) clearInterval(reminderInterval);
+    reminderInterval = setInterval(checkReminders, 60 * 60 * 1000); // hourly
+    checkReminders(); // immediate check
+  }
+
+  // ---------- DYNAMIC FILTER LOGIC (All, Today, Schedule, Completed) ----------
+  function filterTasksByCurrentView() {
+    const now = new Date();
+    const todayLocalStr = getLocalDateStr(now);
+    
+    switch (currentFilter) {
+      case 'all':
+        // Show ALL tasks (pending + completed)
+        return [...tasks];
+      case 'today':
+        // Tasks whose due date matches today's local date (any status)
+        return tasks.filter(task => {
+          const dueLocal = getLocalDueDate(task.due_datetime);
+          return dueLocal === todayLocalStr;
+        });
+      case 'schedule':
+        // Upcoming tasks: status === 'pending' AND due date > today (strictly future)
+        return tasks.filter(task => {
+          if (task.status !== 'pending') return false;
+          const dueLocal = getLocalDueDate(task.due_datetime);
+          return dueLocal > todayLocalStr;
+        });
+      case 'completed':
+        // Show only tasks that are marked as completed
+        return tasks.filter(task => task.status === 'completed');
+      default:
+        return [...tasks];
+    }
+  }
+
+  // Helper to get visual overdue/today classes (for task styling)
+  function getTaskExtraClass(task) {
+    if (task.status !== 'pending') return '';
+    const now = new Date();
+    const dueDate = new Date(task.due_datetime);
+    const dueLocal = getLocalDateStr(dueDate);
+    const todayLocal = getLocalDateStr(now);
+    if (dueLocal < todayLocal) return 'overdue';
+    if (dueLocal === todayLocal) return 'today';
+    return '';
+  }
+
+  // Escape HTML to prevent injection
+  function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/[&<>]/g, function(m) {
+      if (m === '&') return '&amp;';
+      if (m === '<') return '&lt;';
+      if (m === '>') return '&gt;';
+      return m;
+    });
+  }
+
+  // Render tasks based on active filter
+  function renderTasks() {
+    const filtered = filterTasksByCurrentView();
+    
+    if (filtered.length === 0) {
+      let emptyMessage = '';
+      switch (currentFilter) {
+        case 'today': emptyMessage = '📭 No tasks due today — enjoy your day!'; break;
+        case 'schedule': emptyMessage = '📅 No upcoming tasks. Create a new plan!'; break;
+        case 'completed': emptyMessage = '✅ Completed tasks will appear here. Great work!'; break;
+        default: emptyMessage = '✨ No tasks yet. Add your first reminder!';
+      }
+      tasksContainer.innerHTML = `<div class="empty-state">${emptyMessage}</div>`;
+      return;
+    }
+    
+    tasksContainer.innerHTML = filtered.map(task => {
+      const dueDate = new Date(task.due_datetime);
+      const formattedDateTime = dueDate.toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+      const extraClass = getTaskExtraClass(task);
+      const isCompleted = task.status === 'completed';
+      
+      return `
+        <div class="task ${extraClass}">
+          <div class="task-row">
+            <span class="task-title" style="${isCompleted ? 'text-decoration: line-through; opacity: 0.7;' : ''}">${escapeHtml(task.title)}</span>
+            <span class="task-date">📅 ${escapeHtml(formattedDateTime)}</span>
+          </div>
+          ${task.description ? `<div class="task-desc">${escapeHtml(task.description)}</div>` : ''}
+          <div class="task-actions">
+            ${!isCompleted ? `<button class="complete-btn" onclick="window.completeTask(${task.id})">✓ Complete</button>` : `<button disabled style="background:#34c759; opacity:0.6;">✓ Done</button>`}
+            <button class="delete-btn" onclick="window.deleteTask(${task.id})">🗑 Delete</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // ---------- GLOBAL ACTIONS (complete / delete) ----------
+  window.completeTask = (id) => {
+    const taskIndex = tasks.findIndex(t => t.id === id);
+    if (taskIndex !== -1 && tasks[taskIndex].status !== 'completed') {
+      tasks[taskIndex].status = 'completed';
+      saveTasks();
+      renderTasks();  // re-render to reflect changes and keep current filter active
+      // optional subtle notification feedback
+      if (notificationEnabled) {
+        sendNotification(`✔️ Task completed`, `"${tasks[taskIndex].title}" is done!`);
+      }
+    }
+  };
+  
+  window.deleteTask = (id) => {
+    tasks = tasks.filter(t => t.id !== id);
+    saveTasks();
+    renderTasks();
+  };
+
+  // ---------- ADD NEW TASK ----------
+  function addNewTask() {
+    const title = taskTitle.value.trim();
+    const description = taskDesc.value.trim();
+    const datetimeLocal = taskDatetime.value;
+    if (!title || !datetimeLocal) {
+      alert('Please enter both a title and a due date/time.');
+      return;
+    }
+    const dueDate = new Date(datetimeLocal);
+    if (isNaN(dueDate.getTime())) {
+      alert('Invalid date selection.');
+      return;
+    }
+    // Validate that the due date is not in the distant past? optional but allow (marked as overdue)
+    const newTask = {
+      id: Date.now(),
+      title: title,
+      description: description,
+      due_datetime: dueDate.toISOString(),
+      status: 'pending',
+      reminder_before_sent: false,
+      reminder_day_sent: false,
+    };
+    tasks.push(newTask);
+    saveTasks();
+    // Clear fields
+    taskTitle.value = '';
+    taskDesc.value = '';
+    taskDatetime.value = '';
+    renderTasks();
+    checkReminders(); // immediate reminder check for new task
+  }
+  
+  addBtn.addEventListener('click', addNewTask);
+  requestPermBtn.addEventListener('click', requestNotification);
+
+  // ---------- SEGMENTED CONTROL: Update filter & active UI ----------
+  const segmentElements = document.querySelectorAll('.segment');
+  function setActiveFilter(filterValue) {
+    currentFilter = filterValue;
+    // Update active class on segments
+    segmentElements.forEach(seg => {
+      const segFilter = seg.getAttribute('data-filter');
+      if (segFilter === filterValue) {
+        seg.classList.add('active');
+      } else {
+        seg.classList.remove('active');
+      }
+    });
+    renderTasks();  // re-render with new filter logic
+  }
+  
+  // Add event listeners to each segment button
+  segmentElements.forEach(seg => {
+    seg.addEventListener('click', () => {
+      const filterValue = seg.getAttribute('data-filter');
+      if (filterValue) {
+        setActiveFilter(filterValue);
+      }
+    });
+  });
+  
+  // ---------- INITIAL DATA & NOTIFICATION STATUS ----------
+  loadTasksFromStorage();
+  scheduleReminders();
+  
+  // Auto request permission on first interaction (better UX)
+  setTimeout(() => {
+    if (Notification.permission === 'default') {
+      requestNotification();
+    } else {
+      notificationEnabled = (Notification.permission === 'granted');
+      notificationStatusDiv.innerText = notificationEnabled ? '✅ Notifications enabled' : '❌ Notifications blocked';
+    }
+  }, 1000);
+  
+  // Re-check reminders when page becomes visible (e.g., after sleep)
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      checkReminders();
+      // Also refresh UI in case due dates changed while tab inactive
+      renderTasks();
+    }
+  });
+  
+  // Optional: Re-render after system time change? Not necessary but clean.
+  window.addEventListener('focus', () => {
+    checkReminders();
+    renderTasks();
+  });
+</script>
+</body>
+</html>
