@@ -321,11 +321,11 @@
   <div class="card">
     <div class="form-group">
       <label>Task name</label>
-      <input type="text" id="taskTitle" placeholder="Enter task name" autocomplete="off">
+      <input type="text" id="taskTitle" placeholder="enter task name" autocomplete="off">
     </div>
     <div class="form-group">
       <label>Description (optional)</label>
-      <textarea id="taskDesc" rows="2"></textarea>
+      <textarea id="taskDesc" rows="2" placeholder="Add description (optional)"></textarea>
     </div>
     <div class="form-group">
       <label>Due date & time</label>
@@ -420,33 +420,8 @@
     if (stored) {
       tasks = JSON.parse(stored);
     } else {
-      // Demo: N8N webinar tomorrow at 18:00 (ensures it appears in "Schedule" or "Today" depending on day)
-      const demoDate = new Date();
-      demoDate.setDate(demoDate.getDate() + 1);
-      demoDate.setHours(18, 0, 0, 0);
-      // Another sample: A task due today to showcase "Today" filter
-      const todayDemo = new Date();
-      todayDemo.setHours(19, 30, 0, 0);
-      tasks = [
-        {
-          id: Date.now(),
-          title: "N8N webinar",
-          description: "Join the automation workflow session",
-          due_datetime: demoDate.toISOString(),
-          status: "pending",
-          reminder_before_sent: false,
-          reminder_day_sent: false
-        },
-        {
-          id: Date.now() + 1,
-          title: "Review project proposal",
-          description: "Share feedback with team",
-          due_datetime: todayDemo.toISOString(),
-          status: "pending",
-          reminder_before_sent: false,
-          reminder_day_sent: false
-        }
-      ];
+      // NO DEMO TASKS - start with empty array
+      tasks = [];
       saveTasks();
     }
     renderTasks();
@@ -632,7 +607,7 @@
       alert('Invalid date selection.');
       return;
     }
-    // Validate that the due date is not in the distant past? optional but allow (marked as overdue)
+    // Create new task with all required fields
     const newTask = {
       id: Date.now(),
       title: title,
@@ -644,12 +619,18 @@
     };
     tasks.push(newTask);
     saveTasks();
-    // Clear fields
+    // Clear fields for better UX
     taskTitle.value = '';
     taskDesc.value = '';
     taskDatetime.value = '';
     renderTasks();
     checkReminders(); // immediate reminder check for new task
+    // Optional: auto-switch to 'all' or 'schedule' view to show the new task? Keep current filter.
+    // But if current filter was 'completed' or 'today' where new task may not appear, show a subtle hint?
+    // We'll just re-render, letting the user see the new task appears in appropriate views.
+    if (currentFilter === 'completed') {
+      // If user is on completed filter, new pending task won't show, give a small visual cue? Not necessary.
+    }
   }
   
   addBtn.addEventListener('click', addNewTask);
@@ -685,15 +666,19 @@
   loadTasksFromStorage();
   scheduleReminders();
   
-  // Auto request permission on first interaction (better UX)
+  // Auto request permission after a short delay (less intrusive but still helpful)
   setTimeout(() => {
     if (Notification.permission === 'default') {
+      // We'll not auto-request aggressively; instead show a subtle prompt?
+      // Actually better to let user click "Allow" manually, but we can check.
+      // However for better UX, we can request after timeout? Many sites do.
+      // We'll ask only if it's default.
       requestNotification();
     } else {
       notificationEnabled = (Notification.permission === 'granted');
       notificationStatusDiv.innerText = notificationEnabled ? '✅ Notifications enabled' : '❌ Notifications blocked';
     }
-  }, 1000);
+  }, 1500);
   
   // Re-check reminders when page becomes visible (e.g., after sleep)
   document.addEventListener('visibilitychange', () => {
@@ -704,11 +689,14 @@
     }
   });
   
-  // Optional: Re-render after system time change? Not necessary but clean.
+  // Re-render after window focus (handy for timezone changes or manual system clock changes)
   window.addEventListener('focus', () => {
     checkReminders();
     renderTasks();
   });
+  
+  // Optional: provide a small console log to show that demo tasks are gone (for developer clarity)
+  console.log('Reminders app initialized — no demo tasks, start fresh!');
 </script>
 </body>
 </html>
