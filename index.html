@@ -56,7 +56,6 @@
       max-width: 600px;
       margin: 0 auto;
     }
-    /* Header with elegant theme toggle */
     .header {
       display: flex;
       justify-content: space-between;
@@ -72,7 +71,6 @@
       color: transparent;
       letter-spacing: -0.5px;
     }
-    /* iOS-style toggle switch */
     .theme-switch {
       display: flex;
       align-items: center;
@@ -123,7 +121,6 @@
     input:checked + .slider:before {
       transform: translateX(24px);
     }
-    /* Cards & UI */
     .card {
       background: var(--surface);
       border-radius: 24px;
@@ -179,7 +176,7 @@
       border: 1px solid var(--border);
       margin-top: 8px;
     }
-    /* Segmented control (reimagined: All, Today, Schedule, Completed) */
+    /* Segmented Control - NEW ORDER: Today, Schedule, Completed, All */
     .segmented {
       display: flex;
       background: var(--surface);
@@ -206,7 +203,6 @@
       color: white;
       box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
-    /* Task Cards */
     .task {
       background: var(--surface);
       border-radius: 20px;
@@ -284,6 +280,13 @@
       padding: 8px 16px;
       background: var(--surface-secondary);
       color: var(--accent);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    #requestPermBtn:hover {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
     }
     .empty-state {
       text-align: center;
@@ -296,7 +299,6 @@
       opacity: 0.6;
       transform: none;
     }
-    /* Haptic simulation */
     button:active, .segment:active, .task-actions button:active {
       transform: scale(0.97);
       transition: transform 0.05s;
@@ -317,15 +319,14 @@
     </div>
   </div>
 
-  <!-- Add new task card -->
   <div class="card">
     <div class="form-group">
       <label>Task name</label>
-      <input type="text" id="taskTitle" placeholder="enter task name" autocomplete="off">
+      <input type="text" id="taskTitle" placeholder="e.g., Complete project report" autocomplete="off">
     </div>
     <div class="form-group">
       <label>Description (optional)</label>
-      <textarea id="taskDesc" rows="2" placeholder="Add description (optional)"></textarea>
+      <textarea id="taskDesc" rows="2" placeholder="Add details..."></textarea>
     </div>
     <div class="form-group">
       <label>Due date & time</label>
@@ -334,28 +335,27 @@
     <button id="addBtn">➕ Add Reminder</button>
   </div>
 
-  <!-- Notifications card -->
   <div class="card">
     <div class="notification-status">
       <span>🔔 Notifications</span>
-      <button id="requestPermBtn" class="btn-secondary">Allow</button>
+      <button id="requestPermBtn" class="btn-secondary">Allow Notifications</button>
     </div>
     <div id="notificationStatus" style="font-size:12px; margin-top:8px;"></div>
   </div>
 
-  <!-- Segmented Control: All · Today · Schedule · Completed (fully functional) -->
+  <!-- Segmented Control: NEW ORDER: Today, Schedule, Completed, All -->
   <div class="segmented">
-    <div class="segment active" data-filter="all">All</div>
-    <div class="segment" data-filter="today">Today</div>
+    <div class="segment active" data-filter="today">Today</div>
     <div class="segment" data-filter="schedule">Schedule</div>
     <div class="segment" data-filter="completed">Completed</div>
+    <div class="segment" data-filter="all">All</div>
   </div>
 
-  <!-- Tasks dynamic container -->
   <div id="tasksContainer"></div>
   <div class="info-text">
-    ⏰ Smart reminders: 1 day before & on due date (hourly check)<br>
-    📲 Works offline, browser notifications even when closed
+    ⏰ **3 smart reminders**: 1 day before • On due date • <strong>5 minutes before</strong><br>
+    ✅ Completed tasks disappear from "Today" & "Schedule" views.<br>
+    🔔 Click "Allow Notifications" to enable alerts.
   </div>
 </div>
 
@@ -365,7 +365,6 @@
   let notificationEnabled = false;
   let reminderInterval = null;
 
-  // DOM elements
   const tasksContainer = document.getElementById('tasksContainer');
   const themeToggleCheckbox = document.getElementById('themeToggleCheckbox');
   const addBtn = document.getElementById('addBtn');
@@ -375,9 +374,9 @@
   const taskDesc = document.getElementById('taskDesc');
   const taskDatetime = document.getElementById('taskDatetime');
 
-  let currentFilter = 'all';   // 'all', 'today', 'schedule', 'completed'
+  let currentFilter = 'today';   // Default filter changed to "Today"
 
-  // ---------- HELPER: get local date YYYY-MM-DD (timezone-safe) ----------
+  // ---------- HELPER: local date string (YYYY-MM-DD) ----------
   function getLocalDateStr(dateObj) {
     const year = dateObj.getFullYear();
     const month = String(dateObj.getMonth() + 1).padStart(2, '0');
@@ -385,13 +384,12 @@
     return `${year}-${month}-${day}`;
   }
 
-  // Get local date from stored ISO string (due_datetime)
   function getLocalDueDate(taskDueISO) {
     const due = new Date(taskDueISO);
     return getLocalDateStr(due);
   }
 
-  // ---------- THEME HANDLER (Dark/Light Toggle) ----------
+  // ---------- THEME ----------
   function initTheme() {
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'dark') {
@@ -402,7 +400,7 @@
       themeToggleCheckbox.checked = false;
     }
   }
-  function toggleThemeFromSwitch(e) {
+  function toggleThemeFromSwitch() {
     if (themeToggleCheckbox.checked) {
       document.body.classList.add('dark');
       localStorage.setItem('theme', 'dark');
@@ -420,8 +418,7 @@
     if (stored) {
       tasks = JSON.parse(stored);
     } else {
-      // NO DEMO TASKS - start with empty array
-      tasks = [];
+      tasks = []; // No demo tasks - fresh start
       saveTasks();
     }
     renderTasks();
@@ -430,89 +427,133 @@
     localStorage.setItem('todo_reminder_tasks', JSON.stringify(tasks));
   }
 
-  // ---------- NOTIFICATIONS ----------
+  // ---------- NOTIFICATIONS (Working Allow Button) ----------
   async function requestNotification() {
     if (!('Notification' in window)) {
       notificationStatusDiv.innerText = '⚠️ Not supported on this browser';
       return;
     }
-    const permission = await Notification.requestPermission();
-    notificationEnabled = (permission === 'granted');
-    notificationStatusDiv.innerText = notificationEnabled ? '✅ Notifications enabled' : '❌ Notifications blocked';
+    try {
+      const permission = await Notification.requestPermission();
+      notificationEnabled = (permission === 'granted');
+      if (notificationEnabled) {
+        notificationStatusDiv.innerHTML = '✅ Notifications enabled — you will receive reminders.';
+        // Send a test notification to confirm it works
+        new Notification('✅ Reminders Active', { body: 'You will now receive task reminders (1 day before, on due date, and 5 minutes before).', icon: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23007aff"%3E%3Cpath d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/%3E%3C/svg%3E' });
+      } else {
+        notificationStatusDiv.innerHTML = '❌ Notifications blocked. Please allow in browser settings.';
+      }
+    } catch (err) {
+      notificationStatusDiv.innerHTML = '⚠️ Error requesting permission.';
+      console.error(err);
+    }
   }
+  
   function sendNotification(title, body) {
     if (!notificationEnabled) return;
-    new Notification(title, { body, icon: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23007aff"%3E%3Cpath d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/%3E%3C/svg%3E' });
+    try {
+      new Notification(title, { body, icon: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23007aff"%3E%3Cpath d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/%3E%3C/svg%3E' });
+    } catch(e) { console.warn(e); }
   }
 
-  // ---------- REMINDER ENGINE (hourly checks) ----------
-  function checkReminders() {
+  // Update notification status on page load based on current permission
+  function updateNotificationStatusUI() {
+    if (!('Notification' in window)) {
+      notificationStatusDiv.innerHTML = '⚠️ Not supported';
+      return;
+    }
+    if (Notification.permission === 'granted') {
+      notificationEnabled = true;
+      notificationStatusDiv.innerHTML = '✅ Notifications enabled — you will receive reminders.';
+    } else if (Notification.permission === 'denied') {
+      notificationEnabled = false;
+      notificationStatusDiv.innerHTML = '❌ Notifications blocked. Click "Allow Notifications" and grant permission.';
+    } else {
+      notificationEnabled = false;
+      notificationStatusDiv.innerHTML = '🔔 Click "Allow Notifications" to enable alerts.';
+    }
+  }
+
+  // ---------- REMINDER ENGINE (runs every minute) - includes 5-min warning ----------
+  function checkAllReminders() {
     const now = new Date();
     const todayLocal = getLocalDateStr(now);
     const tomorrowDate = new Date(now);
     tomorrowDate.setDate(tomorrowDate.getDate() + 1);
     const tomorrowLocal = getLocalDateStr(tomorrowDate);
     let updated = false;
+
     tasks.forEach(task => {
       if (task.status !== 'pending') return;
-      const dueDateObj = new Date(task.due_datetime);
-      const dueLocal = getLocalDateStr(dueDateObj);
-      // One day before reminder
+
+      const dueDate = new Date(task.due_datetime);
+      const dueLocal = getLocalDateStr(dueDate);
+      
+      // 1) One day before reminder
       if (dueLocal === tomorrowLocal && !task.reminder_before_sent) {
         sendNotification(`⏰ Reminder: tomorrow`, `${task.title} is due tomorrow`);
         task.reminder_before_sent = true;
         updated = true;
       }
-      // Day of reminder
-      else if (dueLocal === todayLocal && !task.reminder_day_sent) {
+      
+      // 2) Day of reminder (only once)
+      if (dueLocal === todayLocal && !task.reminder_day_sent) {
         sendNotification(`🔔 Due today`, `${task.title} is due today`);
         task.reminder_day_sent = true;
         updated = true;
       }
+      
+      // 3) 5 minutes before exact event time
+      if (!task.reminder_5min_sent) {
+        const diffMs = dueDate.getTime() - now.getTime();
+        const diffMinutes = diffMs / (1000 * 60);
+        if (diffMinutes > 0 && diffMinutes <= 5) {
+          sendNotification(`⏰ 5 minute warning`, `"${task.title}" starts in 5 minutes!`);
+          task.reminder_5min_sent = true;
+          updated = true;
+        }
+      }
     });
+
     if (updated) {
       saveTasks();
-      renderTasks(); // refresh UI highlights
+      renderTasks(); // refresh UI (overdue/today classes may change)
     }
   }
 
-  function scheduleReminders() {
+  function startReminderEngine() {
     if (reminderInterval) clearInterval(reminderInterval);
-    reminderInterval = setInterval(checkReminders, 60 * 60 * 1000); // hourly
-    checkReminders(); // immediate check
+    reminderInterval = setInterval(checkAllReminders, 60 * 1000);
+    checkAllReminders();
   }
 
-  // ---------- DYNAMIC FILTER LOGIC (All, Today, Schedule, Completed) ----------
+  // ---------- FILTER LOGIC (Fixed: Completed tasks NOT shown in Today or Schedule) ----------
   function filterTasksByCurrentView() {
     const now = new Date();
     const todayLocalStr = getLocalDateStr(now);
     
     switch (currentFilter) {
-      case 'all':
-        // Show ALL tasks (pending + completed)
-        return [...tasks];
       case 'today':
-        // Tasks whose due date matches today's local date (any status)
-        return tasks.filter(task => {
-          const dueLocal = getLocalDueDate(task.due_datetime);
-          return dueLocal === todayLocalStr;
-        });
+        // Only pending tasks due today (completed tasks should NOT appear)
+        return tasks.filter(task => 
+          task.status === 'pending' && getLocalDueDate(task.due_datetime) === todayLocalStr
+        );
       case 'schedule':
-        // Upcoming tasks: status === 'pending' AND due date > today (strictly future)
-        return tasks.filter(task => {
-          if (task.status !== 'pending') return false;
-          const dueLocal = getLocalDueDate(task.due_datetime);
-          return dueLocal > todayLocalStr;
-        });
+        // Only pending tasks with future due date (completed excluded)
+        return tasks.filter(task => 
+          task.status === 'pending' && getLocalDueDate(task.due_datetime) > todayLocalStr
+        );
       case 'completed':
-        // Show only tasks that are marked as completed
+        // Only completed tasks
         return tasks.filter(task => task.status === 'completed');
+      case 'all':
+        // Show everything (pending + completed)
+        return [...tasks];
       default:
         return [...tasks];
     }
   }
 
-  // Helper to get visual overdue/today classes (for task styling)
   function getTaskExtraClass(task) {
     if (task.status !== 'pending') return '';
     const now = new Date();
@@ -524,7 +565,6 @@
     return '';
   }
 
-  // Escape HTML to prevent injection
   function escapeHtml(str) {
     if (!str) return '';
     return str.replace(/[&<>]/g, function(m) {
@@ -535,14 +575,13 @@
     });
   }
 
-  // Render tasks based on active filter
   function renderTasks() {
     const filtered = filterTasksByCurrentView();
     
     if (filtered.length === 0) {
       let emptyMessage = '';
       switch (currentFilter) {
-        case 'today': emptyMessage = '📭 No tasks due today — enjoy your day!'; break;
+        case 'today': emptyMessage = '📭 No pending tasks due today — enjoy your day!'; break;
         case 'schedule': emptyMessage = '📅 No upcoming tasks. Create a new plan!'; break;
         case 'completed': emptyMessage = '✅ Completed tasks will appear here. Great work!'; break;
         default: emptyMessage = '✨ No tasks yet. Add your first reminder!';
@@ -573,14 +612,13 @@
     }).join('');
   }
 
-  // ---------- GLOBAL ACTIONS (complete / delete) ----------
+  // ---------- GLOBAL ACTIONS ----------
   window.completeTask = (id) => {
     const taskIndex = tasks.findIndex(t => t.id === id);
     if (taskIndex !== -1 && tasks[taskIndex].status !== 'completed') {
       tasks[taskIndex].status = 'completed';
       saveTasks();
-      renderTasks();  // re-render to reflect changes and keep current filter active
-      // optional subtle notification feedback
+      renderTasks();  // Re-render: completed task disappears from Today/Schedule views automatically
       if (notificationEnabled) {
         sendNotification(`✔️ Task completed`, `"${tasks[taskIndex].title}" is done!`);
       }
@@ -593,7 +631,7 @@
     renderTasks();
   };
 
-  // ---------- ADD NEW TASK ----------
+  // ---------- ADD NEW TASK (with all 3 reminder flags) ----------
   function addNewTask() {
     const title = taskTitle.value.trim();
     const description = taskDesc.value.trim();
@@ -607,7 +645,6 @@
       alert('Invalid date selection.');
       return;
     }
-    // Create new task with all required fields
     const newTask = {
       id: Date.now(),
       title: title,
@@ -616,87 +653,78 @@
       status: 'pending',
       reminder_before_sent: false,
       reminder_day_sent: false,
+      reminder_5min_sent: false,
     };
     tasks.push(newTask);
     saveTasks();
-    // Clear fields for better UX
     taskTitle.value = '';
     taskDesc.value = '';
     taskDatetime.value = '';
     renderTasks();
-    checkReminders(); // immediate reminder check for new task
-    // Optional: auto-switch to 'all' or 'schedule' view to show the new task? Keep current filter.
-    // But if current filter was 'completed' or 'today' where new task may not appear, show a subtle hint?
-    // We'll just re-render, letting the user see the new task appears in appropriate views.
-    if (currentFilter === 'completed') {
-      // If user is on completed filter, new pending task won't show, give a small visual cue? Not necessary.
-    }
+    checkAllReminders();
   }
   
   addBtn.addEventListener('click', addNewTask);
-  requestPermBtn.addEventListener('click', requestNotification);
+  
+  // Make the Allow button work perfectly
+  requestPermBtn.addEventListener('click', async () => {
+    await requestNotification();
+  });
 
-  // ---------- SEGMENTED CONTROL: Update filter & active UI ----------
+  // ---------- SEGMENTED CONTROL (New order handling) ----------
   const segmentElements = document.querySelectorAll('.segment');
   function setActiveFilter(filterValue) {
     currentFilter = filterValue;
-    // Update active class on segments
     segmentElements.forEach(seg => {
       const segFilter = seg.getAttribute('data-filter');
-      if (segFilter === filterValue) {
+      if (segFilter === filterValue) seg.classList.add('active');
+      else seg.classList.remove('active');
+    });
+    renderTasks();
+  }
+  
+  segmentElements.forEach(seg => {
+    seg.addEventListener('click', () => {
+      const filterValue = seg.getAttribute('data-filter');
+      if (filterValue) setActiveFilter(filterValue);
+    });
+  });
+  
+  // ---------- INITIALISE ----------
+  loadTasksFromStorage();
+  startReminderEngine();
+  
+  // Set initial active class based on currentFilter ('today')
+  updateNotificationStatusUI();
+  
+  // Ensure the active tab is visually correct after loading tasks
+  setTimeout(() => {
+    // sync active segment highlight
+    segmentElements.forEach(seg => {
+      if (seg.getAttribute('data-filter') === currentFilter) {
         seg.classList.add('active');
       } else {
         seg.classList.remove('active');
       }
     });
-    renderTasks();  // re-render with new filter logic
-  }
+    renderTasks();
+  }, 10);
   
-  // Add event listeners to each segment button
-  segmentElements.forEach(seg => {
-    seg.addEventListener('click', () => {
-      const filterValue = seg.getAttribute('data-filter');
-      if (filterValue) {
-        setActiveFilter(filterValue);
-      }
-    });
-  });
-  
-  // ---------- INITIAL DATA & NOTIFICATION STATUS ----------
-  loadTasksFromStorage();
-  scheduleReminders();
-  
-  // Auto request permission after a short delay (less intrusive but still helpful)
-  setTimeout(() => {
-    if (Notification.permission === 'default') {
-      // We'll not auto-request aggressively; instead show a subtle prompt?
-      // Actually better to let user click "Allow" manually, but we can check.
-      // However for better UX, we can request after timeout? Many sites do.
-      // We'll ask only if it's default.
-      requestNotification();
-    } else {
-      notificationEnabled = (Notification.permission === 'granted');
-      notificationStatusDiv.innerText = notificationEnabled ? '✅ Notifications enabled' : '❌ Notifications blocked';
-    }
-  }, 1500);
-  
-  // Re-check reminders when page becomes visible (e.g., after sleep)
+  // Re-check reminders when tab becomes visible
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) {
-      checkReminders();
-      // Also refresh UI in case due dates changed while tab inactive
+      checkAllReminders();
       renderTasks();
     }
   });
   
-  // Re-render after window focus (handy for timezone changes or manual system clock changes)
   window.addEventListener('focus', () => {
-    checkReminders();
+    checkAllReminders();
     renderTasks();
+    updateNotificationStatusUI(); // refresh status if permission changed externally
   });
   
-  // Optional: provide a small console log to show that demo tasks are gone (for developer clarity)
-  console.log('Reminders app initialized — no demo tasks, start fresh!');
+  console.log('✅ Reminders active – Filter order: Today → Schedule → Completed → All | Completed tasks hidden from Today/Schedule');
 </script>
 </body>
 </html>
